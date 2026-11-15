@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile with role-based access control for Farm Managers and Field Operators.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "role": { "type": "string", "enum": ["farm_manager", "field_operator"] },
+        "assignedPlotCount": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "role", "updatedAt"]
+    },
+    "FarmPlot": {
+      "title": "FarmPlot",
+      "description": "Center-pivot agricultural plot state at Sharq El Owainat (22.5833 N, 28.6667 E).",
+      "type": "object",
+      "properties": {
+        "plotCode": { "type": "string", "minLength": 2, "maxLength": 16, "pattern": "^P-[0-9]{2}$" },
+        "cropType": { "type": "string", "enum": ["Wheat", "Alfalfa", "Potato", "Barley", "Sorghum", "Fallow"] },
+        "irrigating": { "type": "boolean" },
+        "flowRateM3Hr": { "type": "number" },
+        "targetMoisturePct": { "type": "number" },
+        "sustainabilityCapM3Hr": { "type": "number" },
+        "updatedByUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["plotCode", "cropType", "irrigating", "flowRateM3Hr", "targetMoisturePct", "sustainabilityCapM3Hr", "updatedByUid", "updatedAt"]
+    },
+    "FieldLog": {
+      "title": "FieldLog",
+      "description": "Field operator and farm manager telemetry inspection or irrigation maintenance log.",
+      "type": "object",
+      "properties": {
+        "plotCode": { "type": "string", "minLength": 2, "maxLength": 16, "pattern": "^P-[0-9]{2}$" },
+        "authorUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "authorRole": { "type": "string", "enum": ["farm_manager", "field_operator"] },
+        "category": { "type": "string", "enum": ["irrigation", "nozzle_check", "soil_sample", "weather_action"] },
+        "note": { "type": "string", "minLength": 3, "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["plotCode", "authorUid", "authorName", "authorRole", "category", "note", "createdAt"]
+    },
+    "FarmSettings": {
+      "title": "FarmSettings",
+      "description": "Estate-wide aquifer sustainability cap and climate adaptation thresholds.",
+      "type": "object",
+      "properties": {
+        "aquiferDailyCapM3": { "type": "number" },
+        "evapLockoutTempC": { "type": "number" },
+        "updatedByUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["aquiferDailyCapM3", "evapLockoutTempC", "updatedByUid", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles and RBAC role assignments."
+    },
+    "/plots/{plotId}": {
+      "schema": { "$ref": "#/entities/FarmPlot" },
+      "description": "Managed center-pivot plot irrigation and crop state."
+    },
+    "/fieldLogs/{logId}": {
+      "schema": { "$ref": "#/entities/FieldLog" },
+      "description": "Field operator inspection and irrigation audit log entries."
+    },
+    "/farmSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/FarmSettings" },
+      "description": "Estate-wide sustainability policy thresholds managed by Farm Managers."
+    }
+  }
+}

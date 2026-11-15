@@ -1,0 +1,145 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: "Outfit", "IBM Plex Sans Arabic", "Cairo", system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "IBM Plex Sans Arabic", "Cairo", "Segoe UI", Tahoma, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-nile: #0369a1;
+  --color-earth: #15803d;
+  --color-wheat: #d97706;
+  --color-canvas: #f9f8f4;
+  --color-surface: #ffffff;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+  }
+
+  [dir='rtl'] body,
+  [dir='rtl'] h1,
+  [dir='rtl'] h2,
+  [dir='rtl'] h3,
+  [dir='rtl'] .font-display {
+    font-family: "IBM Plex Sans Arabic", "Cairo", var(--font-sans);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #0b1117;
+    color: #f1f5f9;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-mono,
+  .tabular-nums {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom hairline scrollbars for precision telemetry panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0b1117;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Custom Leaflet field pin & overlay styling */
+.agrishift-field-pin {
+  background: transparent;
+  border: none;
+}
+.agrishift-pin-wrapper {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.agrishift-pin-pulse {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  animation: agrishift-pulse 2.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+.agrishift-pin-core {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+  border: 3px solid #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.agrishift-vertex-handle {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #f59e0b;
+  border: 3px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+@keyframes agrishift-pulse {
+  0% {
+    transform: scale(0.75);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agrishift-pin-pulse {
+    animation: none;
+  }
+}
+
+/* Ensure Leaflet zoom & attribution stay clean in RTL */
+.leaflet-container {
+  font-family: var(--font-sans);
+  direction: ltr;
+}
+.leaflet-control-attribution {
+  font-size: 10px !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Clean print formatting for rotation plan */
+@media print {
+  header,
+  footer,
+  nav[aria-label="Mobile Navigation"],
+  nav[aria-label="Steps"],
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+}

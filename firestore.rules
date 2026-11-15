@@ -1,0 +1,179 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'af491234567890@gmail.com' ||
+        request.auth.token.email == 'youssef.520250017@ejust.edu.eg'
+      );
+    }
+
+    function hasProfile() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isManager() {
+      return isBootstrappedAdmin() || (isVerifiedUser() && hasProfile() && userRole() == 'farm_manager');
+    }
+
+    function isOperator() {
+      return isVerifiedUser() && hasProfile() && userRole() == 'field_operator';
+    }
+
+    function isTeamMember() {
+      return isManager() || isOperator();
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'assignedPlotCount', 'updatedAt'])
+        && data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.role in ['farm_manager', 'field_operator']
+        && (!('assignedPlotCount' in data) || (data.assignedPlotCount is number && data.assignedPlotCount >= 0 && data.assignedPlotCount <= 12))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFarmPlot(data) {
+      return data.keys().hasAll(['plotCode', 'cropType', 'irrigating', 'flowRateM3Hr', 'targetMoisturePct', 'sustainabilityCapM3Hr', 'updatedByUid', 'updatedAt'])
+        && data.keys().hasOnly(['plotCode', 'cropType', 'irrigating', 'flowRateM3Hr', 'targetMoisturePct', 'sustainabilityCapM3Hr', 'updatedByUid', 'updatedAt'])
+        && data.plotCode is string && data.plotCode.size() >= 2 && data.plotCode.size() <= 16 && data.plotCode.matches('^P-[0-9]{2}$')
+        && data.cropType in ['Wheat', 'Alfalfa', 'Potato', 'Barley', 'Sorghum', 'Fallow']
+        && data.irrigating is bool
+        && data.flowRateM3Hr is number && data.flowRateM3Hr >= 0 && data.flowRateM3Hr <= 500
+        && data.targetMoisturePct is number && data.targetMoisturePct >= 5 && data.targetMoisturePct <= 60
+        && data.sustainabilityCapM3Hr is number && data.sustainabilityCapM3Hr >= 0 && data.sustainabilityCapM3Hr <= 500
+        && data.updatedByUid is string && data.updatedByUid.size() >= 1 && data.updatedByUid.size() <= 128
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFieldLog(data) {
+      return data.keys().hasAll(['plotCode', 'authorUid', 'authorName', 'authorRole', 'category', 'note', 'createdAt'])
+        && data.keys().hasOnly(['plotCode', 'authorUid', 'authorName', 'authorRole', 'category', 'note', 'createdAt'])
+        && data.plotCode is string && data.plotCode.size() >= 2 && data.plotCode.size() <= 16 && data.plotCode.matches('^P-[0-9]{2}$')
+        && data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 120
+        && data.authorRole in ['farm_manager', 'field_operator']
+        && data.category in ['irrigation', 'nozzle_check', 'soil_sample', 'weather_action']
+        && data.note is string && data.note.size() >= 3 && data.note.size() <= 500
+        && data.createdAt is timestamp;
+    }
+
+    function isValidFarmSettings(data) {
+      return data.keys().hasAll(['aquiferDailyCapM3', 'evapLockoutTempC', 'updatedByUid', 'updatedAt'])
+        && data.keys().hasOnly(['aquiferDailyCapM3', 'evapLockoutTempC', 'updatedByUid', 'updatedAt'])
+        && data.aquiferDailyCapM3 is number && data.aquiferDailyCapM3 >= 5000 && data.aquiferDailyCapM3 <= 120000
+        && data.evapLockoutTempC is number && data.evapLockoutTempC >= 25 && data.evapLockoutTempC <= 55
+        && data.updatedByUid is string && data.updatedByUid.size() >= 1 && data.updatedByUid.size() <= 128
+        && data.updatedAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isVerifiedUser() && (request.auth.uid == userId || isManager());
+      allow list: if isVerifiedUser() && (isManager() || resource.data.uid == request.auth.uid);
+      allow create: if isValidId(userId)
+        && isVerifiedUser()
+        && isValidUserProfile(incoming())
+        && incoming().uid == userId
+        && incoming().uid == request.auth.uid
+        && incoming().updatedAt == request.time
+        && (incoming().role == 'field_operator' || isBootstrappedAdmin());
+      allow update: if isValidId(userId)
+        && isVerifiedUser()
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().updatedAt == request.time
+        && (
+          isManager() ||
+          (
+            request.auth.uid == userId
+            && incoming().role == existing().role
+            && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(userId) && isManager();
+    }
+
+    match /plots/{plotId} {
+      allow get: if isValidId(plotId) && isTeamMember();
+      allow list: if isTeamMember() && resource.data.plotCode is string;
+      allow create: if isValidId(plotId)
+        && isManager()
+        && isValidFarmPlot(incoming())
+        && incoming().updatedByUid == request.auth.uid
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(plotId)
+        && isTeamMember()
+        && isValidFarmPlot(incoming())
+        && incoming().plotCode == existing().plotCode
+        && incoming().updatedByUid == request.auth.uid
+        && incoming().updatedAt == request.time
+        && (
+          isManager() ||
+          (
+            isOperator()
+            && incoming().flowRateM3Hr <= existing().sustainabilityCapM3Hr
+            && incoming().diff(existing()).affectedKeys().hasOnly(['irrigating', 'flowRateM3Hr', 'updatedByUid', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(plotId) && isManager();
+    }
+
+    match /fieldLogs/{logId} {
+      allow get: if isValidId(logId) && isTeamMember();
+      allow list: if isTeamMember() && (isManager() || resource.data.authorUid == request.auth.uid);
+      allow create: if isValidId(logId)
+        && isTeamMember()
+        && isValidFieldLog(incoming())
+        && incoming().authorUid == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(logId) && isManager();
+    }
+
+    match /farmSettings/{settingId} {
+      allow get: if isValidId(settingId) && isTeamMember();
+      allow list: if isTeamMember() && resource.data.aquiferDailyCapM3 is number;
+      allow create, update: if isValidId(settingId)
+        && isManager()
+        && isValidFarmSettings(incoming())
+        && incoming().updatedByUid == request.auth.uid
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /test/connection {
+      allow get: if true;
+    }
+  }
+}

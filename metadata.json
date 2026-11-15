@@ -1,0 +1,6 @@
+{
+  "name": "AgriShift Twin — خريطة الزراعة الذكية والتوأم الرقمي",
+  "description": "Integrated Egyptian crop-rotation planner, NASA Earth observation telemetry, and 3D center-pivot precision irrigation digital twin for Sharq El Owainat.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
